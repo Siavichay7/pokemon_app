@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pokemon_app/config/api/pokemon_api.dart';
+import 'package:pokemon_app/presentation/providers/pokemon_providers.dart';
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final pokemons = ref.watch(getPokemonsProvider);
     return Scaffold(body: PokemonContainer());
   }
 }
@@ -16,6 +19,7 @@ class PokemonContainer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 78.0, horizontal: 8),
       child: (Container(
