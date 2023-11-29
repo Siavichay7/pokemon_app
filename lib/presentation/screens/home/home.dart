@@ -1,31 +1,110 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pokemon_app/config/api/pokemon_api.dart';
 import 'package:pokemon_app/domain/entities/pokemon.dart';
+import 'package:pokemon_app/presentation/providers/internet_providers.dart';
 import 'package:pokemon_app/presentation/providers/pokemon_providers.dart';
+import 'package:pokemon_app/presentation/screens/home/not_internet.dart';
+import 'package:pokemon_app/presentation/widgets/skeleton.dart';
 
-class HomePage extends ConsumerWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final pokemons = ref.watch(getPokemonsProvider);
+  ConsumerState<ConsumerStatefulWidget> createState() => _HomePageState();
+}
+
+class _HomePageState extends ConsumerState<HomePage> {
+  final ScrollController _scrollController = ScrollController();
+  List pokemonsList = [];
+  @override
+  Widget build(BuildContext context) {
+    final hasInternet = ref.watch(internetProvider);
+    final pokemonProv = ref.watch(pokemonApiProviderProvider);
+
     return Scaffold(
-        body: pokemons.when(
-      data: (pokemons) => ListView.builder(
-        shrinkWrap: true,
-        itemCount: pokemons.length,
-        itemBuilder: (context, index) {
-          Pokemon pokemon = Pokemon.fromMap(pokemons[index]);
-          return Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: PokemonContainer(index: index, pokemon: pokemon),
-          );
-        },
-      ),
-      loading: () => const CircularProgressIndicator(),
-      error: (error, stackTrace) => Text('$error'),
-    ));
+      body: !hasInternet
+          ? FutureBuilder<dynamic>(
+              future: ref
+                  .watch(pokemonApiProviderProvider.notifier)
+                  .getPokemons(pokemonProv.length),
+              builder: (BuildContext? context, AsyncSnapshot? snapshot) {
+                if (snapshot!.hasData) {
+                  pokemonsList = snapshot.data;
+                  return ListView.builder(
+                    controller: _scrollController,
+                    shrinkWrap: true,
+                    itemCount: snapshot.data.length,
+                    itemBuilder: (context, index) {
+                      Pokemon pokemon = Pokemon.fromMap(snapshot.data[index]);
+                      if (index == snapshot.data.length - 1) {
+                        return Column(
+                          children: [
+                            Image.asset(
+                              "assets/gif/loading.gif",
+                              height: 100,
+                              width: 100,
+                            ),
+                            Center(
+                              child: Text("Loading..."),
+                            )
+                          ],
+                        );
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: PokemonContainer(index: index, pokemon: pokemon),
+                      );
+                    },
+                  );
+                } else if (snapshot.hasError) {
+                  return Text('${snapshot.error}');
+                } else if (snapshot.connectionState ==
+                    ConnectionState.waiting) {
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: 20,
+                    itemBuilder: (context, index) {
+                      return Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: SkeletonView(),
+                      );
+                    },
+                  );
+                }
+                return Container();
+              },
+            )
+          : NotInternet(),
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Agregar el listener al initState para que esté activo desde el principio
+    _scrollController.addListener(_scrollListener);
+  }
+
+  @override
+  void dispose() {
+    // Asegurarse de eliminar el listener cuando el widget se elimina
+    _scrollController.removeListener(_scrollListener);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollListener() {
+    // Verificar si hemos llegado al final de la lista
+    if (_scrollController.position.pixels ==
+        _scrollController.position.maxScrollExtent) {
+      ref
+          .read(pokemonApiProviderProvider.notifier)
+          .getPokemons(pokemonsList.length);
+    }
   }
 }
 
@@ -94,13 +173,16 @@ class PokemonContent extends StatelessWidget {
                 width: size.width * 0.2,
                 height: size.height.toDouble(),
               ),
-              Text(
-                pokemon!.name.toString().toUpperCase(),
-                style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: "Helvetica Neue",
-                    fontSize: size.width * 0.05),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: Text(
+                  pokemon!.name.toString().toUpperCase(),
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: "Helvetica Neue",
+                      fontSize: size.width * 0.05),
+                ),
               ),
             ],
           )
@@ -112,7 +194,7 @@ class PokemonContent extends StatelessWidget {
             style: TextStyle(
                 color: Colors.white.withOpacity(0.3),
                 fontFamily: "Helvetica Neue",
-                fontSize: size.width * 0.08),
+                fontSize: size.width * 0.1),
           ),
         )
       ],

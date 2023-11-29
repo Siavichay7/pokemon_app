@@ -28,6 +28,7 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  observe_internet_connectivity: ^1.0.2
   flutter_riverpod: ^2.4.6
   animate_do: ^3.0.2
   go_router: ^10.1.1
