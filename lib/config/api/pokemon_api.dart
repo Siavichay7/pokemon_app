@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:developer';
 
 import 'package:dio/dio.dart';
+import 'package:pokemon_app/domain/entities/pokemon.dart';
 
 class PokemonApi {
   static Future<dynamic> getPokemons() async {
@@ -25,7 +26,7 @@ class PokemonApi {
       });
       return pokemonData;
     } catch (e) {
-      throw Exception('Error al obtener los datos');
+      throw Exception(e);
     }
   }
 }
