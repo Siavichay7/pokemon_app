@@ -9,7 +9,6 @@ class NotInternet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final hasInternet = ref.watch(internetProvider);
     return Scaffold(
         bottomSheet: Image.asset('assets/images/pokachu.png'),
         body: Column(
@@ -50,17 +49,10 @@ class NotInternet extends ConsumerWidget {
                   ),
                 ),
                 onPressed: () {
-                  print(hasInternet);
-                  if (!hasInternet) {
-                    ref
-                        .read(internetProvider.notifier)
-                        .restartConnection(context);
-                  } else {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const HomePage()),
-                    );
-                  }
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const HomePage()),
+                  );
                 },
                 child: Text('Try Again Now'),
               ),

@@ -1,2 +1,2 @@
-import 'pokemon_providers.dart';
-import 'internet_providers.dart';
+import './pokemon_providers.dart';
+import './internet_providers.dart';

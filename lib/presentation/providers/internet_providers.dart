@@ -6,34 +6,22 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 part 'internet_providers.g.dart';
 
 @Riverpod(keepAlive: true)
-class Internet extends _$Internet {
-  @override
-  bool build() => false;
+Stream<bool?> getConnection(GetConnectionRef ref) async* {
+  bool? data;
+  final subscription = InternetConnectivity()
+      .observeInternetConnection
+      .listen((bool hasInternetAccess) {
+    if (!hasInternetAccess) {
+      data = false;
+      print("STATE: $data");
+    } else {
+      data = true;
+      print("STATE: $data");
+    }
+  });
 
-  Future<bool> getConnection() async {
-    final subscription = InternetConnectivity()
-        .observeInternetConnection
-        .listen((bool hasInternetAccess) {
-      if (!hasInternetAccess) {
-        state = false;
-        print("STATE: $state");
-      } else {
-        state = true;
-        print("STATE: $state");
-      }
-    });
+  await Future.delayed(const Duration(seconds: 10));
+  yield data;
 
-    await Future.delayed(const Duration(seconds: 10));
-    subscription.cancel();
-    return state;
-  }
-
-  Future<dynamic> restartConnection(context) async {
-    state = true;
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const HomePage()),
-    );
-    print(state);
-  }
+  // subscription.cancel();
 }

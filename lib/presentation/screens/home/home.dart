@@ -1,5 +1,6 @@
 import 'dart:developer';
 
+import 'package:async/async.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pokemon_app/config/api/pokemon_api.dart';
@@ -8,6 +9,8 @@ import 'package:pokemon_app/presentation/providers/internet_providers.dart';
 import 'package:pokemon_app/presentation/providers/pokemon_providers.dart';
 import 'package:pokemon_app/presentation/screens/home/not_internet.dart';
 import 'package:pokemon_app/presentation/widgets/skeleton.dart';
+
+import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -19,112 +22,113 @@ class HomePage extends ConsumerStatefulWidget {
 class _HomePageState extends ConsumerState<HomePage> {
   final ScrollController _scrollController = ScrollController();
   List pokemonsList = [];
+  static const _pageSize = 10;
+
+  final PagingController<int, dynamic> _pagingController =
+      PagingController(firstPageKey: 0);
   @override
   Widget build(BuildContext context) {
-    final hasInternet = ref.watch(internetProvider);
-    final pokemonProv = ref.watch(pokemonApiProviderProvider);
+    final hasInternetProvider = ref.watch(getConnectionProvider);
 
+    if (hasInternetProvider.isLoading) {
+      return Scaffold(
+          body: ListView.builder(
+        shrinkWrap: true,
+        itemCount: 20,
+        itemBuilder: (context, index) {
+          return Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: SkeletonView(),
+          );
+        },
+      ));
+    }
+
+    final hasInternet = hasInternetProvider.value;
+
+    // print("CANT: ${pokemonProv.length}");
     return Scaffold(
-        body: FutureBuilder(
-            future: ref.watch(internetProvider.notifier).getConnection(),
-            builder: (BuildContext? context, AsyncSnapshot? snapshot) {
-              if (snapshot!.hasData) {
-                if (!!snapshot.data) {
-                  return FutureBuilder<dynamic>(
-                    future: ref
-                        .watch(pokemonApiProviderProvider.notifier)
-                        .getPokemons(pokemonProv.length),
-                    builder: (BuildContext? context, AsyncSnapshot? snapshot2) {
-                      if (snapshot2!.hasData) {
-                        pokemonsList = snapshot2!.data;
-                        return ListView.builder(
-                          controller: _scrollController,
-                          shrinkWrap: true,
-                          itemCount: snapshot2.data.length,
-                          itemBuilder: (context, index) {
-                            Pokemon pokemon =
-                                Pokemon.fromMap(snapshot2.data[index]);
-                            if (index == snapshot2.data.length - 1) {
-                              return Column(
-                                children: [
-                                  Image.asset(
-                                    "assets/gif/loading.gif",
-                                    height: 100,
-                                    width: 100,
-                                  ),
-                                  Center(
-                                    child: Text("Loading..."),
-                                  )
-                                ],
-                              );
-                            }
-                            return Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: PokemonContainer(
-                                  index: index, pokemon: pokemon),
-                            );
-                          },
-                        );
-                      } else if (snapshot2!.hasError) {
-                        return NotInternet();
-                      } else if (snapshot2.connectionState ==
-                          ConnectionState.waiting) {
-                        return ListView.builder(
-                          shrinkWrap: true,
-                          itemCount: 20,
-                          itemBuilder: (context, index) {
-                            return Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: SkeletonView(),
-                            );
-                          },
-                        );
-                      }
-                      return Container();
-                    },
-                  );
-                } else {
-                  return NotInternet();
-                }
-              } else {
-                return ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: 20,
-                  itemBuilder: (context, index) {
-                    return Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: SkeletonView(),
-                    );
+        body: !!hasInternet!
+            ? PagedListView<int, dynamic>(
+                pagingController: _pagingController,
+                builderDelegate: PagedChildBuilderDelegate<dynamic>(
+                  itemBuilder: (context, item, index) {
+                    print("ITEM: ${item}");
+                    if (item != null) {
+                      Pokemon pokemon = Pokemon.fromMap(item);
+                      return Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: PokemonContainer(index: index, pokemon: pokemon),
+                      );
+                    } else {
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: 20,
+                        itemBuilder: (context, index) {
+                          return Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: SkeletonView(),
+                          );
+                        },
+                      );
+                    }
                   },
-                );
-              }
-            }));
+                  firstPageErrorIndicatorBuilder: (_) => NotInternet(),
+                  newPageErrorIndicatorBuilder: (_) => NotInternet(),
+                  firstPageProgressIndicatorBuilder: (_) => Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: SkeletonView(),
+                  ),
+                  newPageProgressIndicatorBuilder: (_) => Column(
+                    children: [
+                      Image.asset(
+                        "assets/gif/loading.gif",
+                        height: 100,
+                        width: 100,
+                      ),
+                      Center(
+                        child: Text("Loading..."),
+                      )
+                    ],
+                  ),
+
+                  // noItemsFoundIndicatorBuilder: (_) => NoItemsFoundIndicator(),
+                  // noMoreItemsIndicatorBuilder: (_) => NoMoreItemsIndicator(),
+                ),
+              )
+            : NotInternet());
+  }
+
+  Future<void> _fetchPage(int pageKey) async {
+    try {
+      final newItems = await await PokemonApi.getPokemons(pageKey, _pageSize);
+      inspect(newItems);
+      final isLastPage = newItems.length < _pageSize;
+      if (isLastPage) {
+        _pagingController.appendLastPage(newItems);
+      } else {
+        final nextPageKey = pageKey + newItems.length;
+        _pagingController.appendPage(
+            newItems, int.parse(nextPageKey.toString()));
+      }
+    } catch (error) {
+      _pagingController.error = error;
+    }
   }
 
   @override
   void initState() {
+    _pagingController.addPageRequestListener((pageKey) {
+      _fetchPage(pageKey);
+    });
     super.initState();
-
-    // Agregar el listener al initState para que esté activo desde el principio
-    _scrollController.addListener(_scrollListener);
   }
 
   @override
   void dispose() {
-    // Asegurarse de eliminar el listener cuando el widget se elimina
-    _scrollController.removeListener(_scrollListener);
-    _scrollController.dispose();
-    super.dispose();
-  }
+    _pagingController.dispose();
 
-  void _scrollListener() {
-    // Verificar si hemos llegado al final de la lista
-    if (_scrollController.position.pixels ==
-        _scrollController.position.maxScrollExtent) {
-      ref
-          .read(pokemonApiProviderProvider.notifier)
-          .getPokemons(pokemonsList.length);
-    }
+    super.dispose();
   }
 }
 
