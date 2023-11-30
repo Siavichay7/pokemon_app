@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:pokemon_app/presentation/providers/internet_providers.dart';
+import 'package:pokemon_app/presentation/screens/home/home.dart';
 
 class NotInternet extends ConsumerWidget {
   const NotInternet({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final hasInternet = ref.watch(internetProvider);
     return Scaffold(
         bottomSheet: Image.asset('assets/images/pokachu.png'),
         body: Column(
@@ -47,7 +50,17 @@ class NotInternet extends ConsumerWidget {
                   ),
                 ),
                 onPressed: () {
-                  ref.read(internetProvider.notifier).restartConnection();
+                  print(hasInternet);
+                  if (!hasInternet) {
+                    ref
+                        .read(internetProvider.notifier)
+                        .restartConnection(context);
+                  } else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const HomePage()),
+                    );
+                  }
                 },
                 child: Text('Try Again Now'),
               ),

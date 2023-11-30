@@ -25,60 +25,80 @@ class _HomePageState extends ConsumerState<HomePage> {
     final pokemonProv = ref.watch(pokemonApiProviderProvider);
 
     return Scaffold(
-      body: !hasInternet
-          ? FutureBuilder<dynamic>(
-              future: ref
-                  .watch(pokemonApiProviderProvider.notifier)
-                  .getPokemons(pokemonProv.length),
-              builder: (BuildContext? context, AsyncSnapshot? snapshot) {
-                if (snapshot!.hasData) {
-                  pokemonsList = snapshot.data;
-                  return ListView.builder(
-                    controller: _scrollController,
-                    shrinkWrap: true,
-                    itemCount: snapshot.data.length,
-                    itemBuilder: (context, index) {
-                      Pokemon pokemon = Pokemon.fromMap(snapshot.data[index]);
-                      if (index == snapshot.data.length - 1) {
-                        return Column(
-                          children: [
-                            Image.asset(
-                              "assets/gif/loading.gif",
-                              height: 100,
-                              width: 100,
-                            ),
-                            Center(
-                              child: Text("Loading..."),
-                            )
-                          ],
+        body: FutureBuilder(
+            future: ref.watch(internetProvider.notifier).getConnection(),
+            builder: (BuildContext? context, AsyncSnapshot? snapshot) {
+              if (snapshot!.hasData) {
+                if (!!snapshot.data) {
+                  return FutureBuilder<dynamic>(
+                    future: ref
+                        .watch(pokemonApiProviderProvider.notifier)
+                        .getPokemons(pokemonProv.length),
+                    builder: (BuildContext? context, AsyncSnapshot? snapshot2) {
+                      if (snapshot2!.hasData) {
+                        pokemonsList = snapshot2!.data;
+                        return ListView.builder(
+                          controller: _scrollController,
+                          shrinkWrap: true,
+                          itemCount: snapshot2.data.length,
+                          itemBuilder: (context, index) {
+                            Pokemon pokemon =
+                                Pokemon.fromMap(snapshot2.data[index]);
+                            if (index == snapshot2.data.length - 1) {
+                              return Column(
+                                children: [
+                                  Image.asset(
+                                    "assets/gif/loading.gif",
+                                    height: 100,
+                                    width: 100,
+                                  ),
+                                  Center(
+                                    child: Text("Loading..."),
+                                  )
+                                ],
+                              );
+                            }
+                            return Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: PokemonContainer(
+                                  index: index, pokemon: pokemon),
+                            );
+                          },
+                        );
+                      } else if (snapshot2!.hasError) {
+                        return NotInternet();
+                      } else if (snapshot2.connectionState ==
+                          ConnectionState.waiting) {
+                        return ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: 20,
+                          itemBuilder: (context, index) {
+                            return Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: SkeletonView(),
+                            );
+                          },
                         );
                       }
-                      return Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: PokemonContainer(index: index, pokemon: pokemon),
-                      );
+                      return Container();
                     },
                   );
-                } else if (snapshot.hasError) {
-                  return Text('${snapshot.error}');
-                } else if (snapshot.connectionState ==
-                    ConnectionState.waiting) {
-                  return ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: 20,
-                    itemBuilder: (context, index) {
-                      return Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: SkeletonView(),
-                      );
-                    },
-                  );
+                } else {
+                  return NotInternet();
                 }
-                return Container();
-              },
-            )
-          : NotInternet(),
-    );
+              } else {
+                return ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: 20,
+                  itemBuilder: (context, index) {
+                    return Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: SkeletonView(),
+                    );
+                  },
+                );
+              }
+            }));
   }
 
   @override

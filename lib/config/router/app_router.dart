@@ -9,8 +9,13 @@ part 'app_router.g.dart';
 GoRouter appRouter(AppRouterRef ref) {
   return GoRouter(routes: [
     GoRoute(
+      name: 'home',
       path: '/',
       builder: (context, state) => const HomePage(),
-    )
+    ),
+    // GoRoute(
+    //   path: '/home',
+    //   builder: (context, state) => const HomePage(),
+    // )
   ]);
 }

@@ -1,4 +1,6 @@
+import 'package:flutter/material.dart';
 import 'package:observe_internet_connectivity/observe_internet_connectivity.dart';
+import 'package:pokemon_app/presentation/screens/home/home.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'internet_providers.g.dart';
@@ -8,7 +10,7 @@ class Internet extends _$Internet {
   @override
   bool build() => false;
 
-  Future<dynamic> getConnection() async {
+  Future<bool> getConnection() async {
     final subscription = InternetConnectivity()
         .observeInternetConnection
         .listen((bool hasInternetAccess) {
@@ -23,9 +25,15 @@ class Internet extends _$Internet {
 
     await Future.delayed(const Duration(seconds: 10));
     subscription.cancel();
+    return state;
   }
 
-  Future<dynamic> restartConnection() async {
+  Future<dynamic> restartConnection(context) async {
     state = true;
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const HomePage()),
+    );
+    print(state);
   }
 }
